@@ -1,22 +1,25 @@
 import streamlit as st
 import numpy as np
 import cv2
+import zipfile
+import io
+import os
 from PIL import Image
 from model import find_faces
+
 
 st.set_page_config(page_title="Face Finder", layout="wide")
 
 st.title("🔎 Face Finder")
 
 st.write("Upload a reference face and multiple group photos")
+st.write("Can upload only 1 reference photo")
 
-# Upload reference image
 ref_file = st.file_uploader(
     "Upload Reference Face",
     type=["jpg", "jpeg", "png"]
 )
 
-# ---------- SHOW REFERENCE ----------
 
 if ref_file:
 
@@ -34,14 +37,13 @@ group_files = st.file_uploader(
     accept_multiple_files=True
 )
 
-# ---------- SHOW GROUP PHOTOS ----------
 if ref_file and group_files:
 
     st.subheader("Group Photos")
 
     group_images = []
 
-    cols = st.columns(4)   # number of images per row
+    cols = st.columns(4)
 
     for i, file in enumerate(group_files):
 
@@ -53,7 +55,6 @@ if ref_file and group_files:
         with cols[i % 4]:
             st.image(img, caption=file.name, width=300)
 
-# ---------- PROCESS ----------
     if st.button("Find Face"):
 
         with st.spinner("Searching for matching faces..."):
@@ -80,3 +81,18 @@ if ref_file and group_files:
 
                 with cols[i % 3]:
                     st.image(img, width=600)
+
+            zip_buffer = io.BytesIO()
+
+            with zipfile.ZipFile(zip_buffer, "w") as zip_file:
+                for img_path in results:
+                    zip_file.write(img_path, os.path.basename(img_path))
+
+            zip_buffer.seek(0)
+
+            st.download_button(
+                label="⬇ Download All Matched Photos (ZIP)",
+                data=zip_buffer,
+                file_name="matched_faces.zip",
+                mime="application/zip"
+            )
